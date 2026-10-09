@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCROLLFILM — a 3D film that plays as you scroll</title>
+<meta name="description" content="SCROLLFILM is a scroll-driven 3D website: a cinematic WebGL film runs under the page as you scroll, and every word on top of it is real HTML. Includes a full reverse-engineering breakdown of how it was built, with frame interpolation for smooth playback on normal laptops.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+
+<canvas id="film" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="xray-tag xray-tag-film" aria-hidden="true">LAYER 0 · WebGL film — position: fixed, z-index: 0</div>
+
+<!-- Film-player style HUD -->
+<div class="hud" aria-hidden="true">
+  <div class="hud-row">
+    <span class="hud-title">SCROLLFILM</span>
+    <span class="hud-scene" id="hudScene">SCENE 1 / 4</span>
+    <span class="hud-fps" id="hudFps">-- fps</span>
+  </div>
+  <div class="hud-track"><div class="hud-bar" id="hudBar"></div><div class="hud-knob" id="hudKnob"></div></div>
+</div>
+
+<main id="content">
+
+  <section class="chapter" data-from="0" data-to="0.16" aria-label="Intro">
+    <div class="chapter-inner">
+      <p class="eyebrow">A scroll-driven 3D film</p>
+      <h1 class="mega">SCROLL<br>FILM</h1>
+      <p class="lede">The film runs under the page as you scroll.<br>Every word on top of it is real HTML.</p>
+      <p class="scroll-hint"><span class="scroll-hint-arrow">↓</span> scroll to play</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-from="0.20" data-to="0.36" aria-label="Real HTML">
+    <div class="chapter-inner">
+      <p class="eyebrow">Chapter one</p>
+      <h2>Every word is real HTML.</h2>
+      <p class="body-copy">There is no video file here. Behind this text a live 3D scene renders sixty times a second — and this headline is still a genuine <code>&lt;h2&gt;</code>. Select it. Search it. Translate it. A film you can read.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-from="0.42" data-to="0.58" aria-label="Playhead">
+    <div class="chapter-inner">
+      <p class="eyebrow">Chapter two</p>
+      <h2>Scroll is the playhead.</h2>
+      <p class="body-copy">Your scrollbar is the timeline scrubber. Drag it fast and the film jumps; drag it slow and every frame breathes. The page never autoplays — <em>you</em> are the projectionist.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-from="0.62" data-to="0.78" aria-label="Interpolation">
+    <div class="chapter-inner">
+      <p class="eyebrow">Chapter three</p>
+      <h2>20 fps in. 40 fps out.</h2>
+      <p class="body-copy">Scroll events arrive janky — about 20 per second on a busy laptop. The render loop <em>interpolates</em> toward the target every frame instead of snapping to it, so motion stays smooth even when your input isn't. Watch the live frame counter, bottom right.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-from="0.84" data-to="0.97" aria-label="Finale">
+    <div class="chapter-inner">
+      <p class="eyebrow">Final scene</p>
+      <h2 class="mega small">THE END</h2>
+      <p class="body-copy">Now watch this exact site get reverse-engineered.</p>
+      <p class="scroll-hint"><span class="scroll-hint-arrow">↓</span> the blueprint</p>
+    </div>
+  </section>
+
+  <!-- ============ REVERSE-ENGINEERED BLUEPRINT ============ -->
+  <section class="blueprint" id="blueprint" aria-label="How this site works">
+    <div class="blueprint-inner">
+      <p class="eyebrow dark">Reverse-engineered</p>
+      <h2>How this exact page works.</h2>
+      <p class="body-copy dark">Four tricks. No video files, no frameworks, no build step. Open your devtools and check — the canvas never moves, only the <em>camera inside it</em> does.</p>
+
+      <div class="trick-grid">
+        <article class="trick">
+          <h3><span class="trick-num">01</span> A fixed canvas, a very tall page</h3>
+          <p>The 3D film is a <code>&lt;canvas&gt;</code> pinned with <code>position: fixed</code>. The page body is ~700 viewport-heights tall, so scrolling gives the film a long timeline to scrub.</p>
+<pre><code>#film { position: fixed; inset: 0; z-index: 0; }
+#content { position: relative; z-index: 1; }
+body { height: 700vh; } /* the timeline */</code></pre>
+        </article>
+
+        <article class="trick">
+          <h3><span class="trick-num">02</span> Scroll becomes a playhead</h3>
+          <p>One number drives everything: scroll progress from 0 to 1. Camera paths, colors, fog and object visibility are all pure functions of it.</p>
+<pre><code>addEventListener('scroll', () =&gt; {
+  const max = document.documentElement.scrollHeight - innerHeight;
+  target = scrollY / max; // 0 → 1, the playhead
+}, { passive: true });</code></pre>
+        </article>
+
+        <article class="trick">
+          <h3><span class="trick-num">03</span> Interpolation, not snapping</h3>
+          <p>This is the 20→40 fps trick. Scroll handlers fire irregularly, so the render loop eases the <em>rendered</em> position toward the <em>target</em> every frame, with frame-rate-independent damping. Janky input in, buttery motion out.</p>
+<pre><code>function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  const k = 1 - Math.exp(-dt * 5.5); // damping
+  smooth += (target - smooth) * k;   // interpolate
+  render(smooth);                    // draw the film
+}</code></pre>
+          <button class="btn" id="copyLoop">Copy this loop</button>
+        </article>
+
+        <article class="trick">
+          <h3><span class="trick-num">04</span> Real HTML on top</h3>
+          <p>Chapters are ordinary sections in normal document flow. Each one fades in only while the playhead is inside its range — the film and the words stay in sync because they read the same number.</p>
+<pre><code>document.querySelectorAll('.chapter').forEach(el =&gt; {
+  const a = +el.dataset.from, b = +el.dataset.to;
+  el.classList.toggle('is-active', smooth &gt; a &amp;&amp; smooth &lt; b);
+});</code></pre>
+        </article>
+      </div>
+
+      <div class="lab">
+        <h3>The lab — poke the machine</h3>
+        <p>Two instruments, live on this page:</p>
+        <div class="lab-row">
+          <button class="btn" id="xrayBtn" aria-pressed="false">X-ray the layers</button>
+          <div class="fps-readout">Live render rate: <strong id="labFps">--</strong> fps <span class="fps-note" id="fpsNote"></span></div>
+        </div>
+        <p class="fineprint">X-ray outlines the fixed WebGL layer and the HTML layer so you can see the trick with your own eyes. If the frame rate dips, the page automatically lowers its render resolution to protect smoothness — that's the adaptive-quality half of the 40 fps promise.</p>
+      </div>
+
+      <div class="perf">
+        <h3>Why it holds up on a normal laptop</h3>
+        <ul>
+          <li><strong>One scene, zero video.</strong> Procedural geometry — no 4K video decode, no giant downloads.</li>
+          <li><strong>Interpolated playhead.</strong> Input sampled at ~20 Hz, rendered at display rate. Damping hides the gaps.</li>
+          <li><strong>Adaptive resolution.</strong> Pixel ratio steps down if fps drops, and back up when there's headroom.</li>
+          <li><strong>Cheap materials.</strong> Additive points and wireframes — no post-processing pipeline, no shadows.</li>
+          <li><strong>Respects reduced motion.</strong> With <code>prefers-reduced-motion</code> the film renders one still frame.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p><strong>SCROLLFILM</strong> — a scroll-driven 3D film · every word real HTML</p>
+    <p class="fineprint">Built with Three.js · MIT licensed · <a href="https://github.com">source on GitHub</a></p>
+  </footer>
+
+</main>
+
+<div class="nogl" id="nogl" hidden>
+  <p><strong>WebGL isn't available</strong> — the film can't play, but every word above is still here, because it's real HTML.</p>
+</div>
+
+<script type="module" src="js/film.js"></script>
+</body>
+</html>
