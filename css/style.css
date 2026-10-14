@@ -41,6 +41,16 @@ body {
   background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
 }
 
+/* Chapter-transition light flash (driven from film.js) */
+.flash {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(255,240,210,0.85) 0%, rgba(255,200,120,0.30) 45%, transparent 75%);
+}
+
 /* ---------- Layer 1: real HTML ---------- */
 #content { position: relative; z-index: 2; }
 

@@ -152,8 +152,24 @@ function keyedLerp(keys, p, out, isColor) {
   return out;
 }
 
+/* ---------------- motion-reactive state (v2 upgrades) ----------------
+   velS  — smoothed playhead velocity (scroll-speed), drives the warp effect
+   bankS — smoothed camera bank (roll into the scroll direction)
+   flashV — chapter-transition light flash intensity (decays in frame()) */
+let velS = 0, bankS = 0, flashV = 0, lastChIdx = -1;
+const flashEl = document.getElementById('flash');
+
 /* ---------------- render one film frame at playhead p ---------------- */
-function render(p, t) {
+function render(p, t, dt) {
+  // UPGRADE 1 — velocity warp: fast scrolling kicks the FOV wider and makes
+  // the nebula surge, like punching into warp. Eases back when you slow down.
+  const warp = Math.min(Math.abs(velS) * 60, 1);
+  const fovT = 55 + warp * 13;
+  if (Math.abs(camera.fov - fovT) > 0.01) {
+    camera.fov += (fovT - camera.fov) * 0.15;
+    camera.updateProjectionMatrix();
+  }
+
   // camera
   keyedLerp(CAM_KEYS, p, _v1, false);
   camera.position.copy(_v1);
@@ -166,6 +182,13 @@ function render(p, t) {
   _v2.set(lerp(A.look[0], B.look[0], tt), lerp(A.look[1], B.look[1], tt), lerp(A.look[2], B.look[2], tt));
   camera.lookAt(_v2);
   camera.rotation.z += Math.sin(p * Math.PI * 2) * 0.03; // subtle roll
+  // UPGRADE 2 — camera banking: roll into the scroll direction, like a ship
+  // carving a turn. velS > 0 means scrolling down/forward.
+  if (dt > 0) {
+    const bankT = Math.max(-0.13, Math.min(0.13, -velS * 2.2));
+    bankS += (bankT - bankS) * (1 - Math.exp(-dt * 5));
+  }
+  camera.rotation.z += bankS;
 
   // color grade
   keyedLerp(COL_KEYS, p, _c, true);
@@ -175,8 +198,12 @@ function render(p, t) {
   // act envelopes
   const eNeb = env(p, -0.01, 0.02, 0.30, 0.46);
   nebulaGroup.visible = eNeb > 0.004;
-  nebulaFar.material.opacity = 0.9 * eNeb;
-  nebulaNear.material.opacity = 0.9 * eNeb;
+  // nebula surge: particles swell and brighten with scroll velocity
+  const surge = 1 + Math.min(Math.abs(velS) * 4, 1.6);
+  nebulaFar.material.size = 1.1 * surge;
+  nebulaNear.material.size = 0.55 * surge;
+  nebulaFar.material.opacity = Math.min(1, 0.9 * eNeb * (1 + warp * 0.35));
+  nebulaNear.material.opacity = Math.min(1, 0.9 * eNeb * (1 + warp * 0.35));
   nebulaGroup.rotation.y = t * 0.006 + p * 0.7;
   nebulaGroup.rotation.x = p * 0.15;
 
@@ -242,11 +269,18 @@ const chapters = [...document.querySelectorAll('.chapter')].map((el) => ({
   to: parseFloat(el.dataset.to),
   active: false,
 }));
-function syncChapters(p) {
-  for (const ch of chapters) {
-    const on = p > ch.from && p < ch.to;
-    if (on !== ch.active) { ch.active = on; ch.el.classList.toggle('is-active', on); }
+function chapterIndex(p) {
+  for (let k = 0; k < chapters.length; k++) {
+    if (p > chapters[k].from && p < chapters[k].to) return k;
   }
+  return chapters.length - 1;
+}
+function syncChapters(p) {
+  const ci = chapterIndex(p);
+  chapters.forEach((ch, k) => {
+    const on = k === ci;
+    if (on !== ch.active) { ch.active = on; ch.el.classList.toggle('is-active', on); }
+  });
   const sceneNo = p < 0.2 ? 1 : p < 0.45 ? 2 : p < 0.7 ? 3 : 4;
   hudScene.textContent = `SCENE ${sceneNo} / 4`;
 }
@@ -291,10 +325,25 @@ function frame() {
   // THE trick: ease the rendered playhead toward the scroll target every
   // frame, with frame-rate-independent damping. Scroll events may arrive at
   // ~20 Hz; this loop runs at display rate, so motion stays smooth.
+  const prevP = smoothP;
   const k = 1 - Math.exp(-dt * 5.5);
   smoothP += (targetP - smoothP) * k;
   if (Math.abs(targetP - smoothP) < 0.0004) smoothP = targetP;
-  render(smoothP, t);
+  // UPGRADE — track scroll velocity (smoothed) for the warp + banking effects
+  const vel = dt > 0 ? (smoothP - prevP) / dt : 0;
+  velS += (vel - velS) * (1 - Math.exp(-dt * 6));
+  // UPGRADE 3 — chapter-transition flash: a soft light burst when the story
+  // crosses into a new chapter, like a film cut.
+  const ci = chapterIndex(smoothP);
+  if (lastChIdx >= 0 && ci !== lastChIdx) flashV = 0.55;
+  lastChIdx = ci;
+  if (flashV > 0.004) {
+    flashV *= Math.exp(-dt * 3.2);
+    flashEl.style.opacity = flashV.toFixed(3);
+  } else if (flashEl.style.opacity !== '0' && flashEl.style.opacity !== '') {
+    flashEl.style.opacity = '0';
+  }
+  render(smoothP, t, dt);
   syncChapters(smoothP);
   syncHud(smoothP);
   syncPerf(dt, t);
@@ -304,7 +353,7 @@ renderer.setSize(innerWidth, innerHeight);
 
 if (reducedMotion) {
   // one still frame; every word stays readable
-  render(0.12, 0);
+  render(0.12, 0, 0);
   chapters.forEach((ch) => { ch.active = true; ch.el.classList.add('is-active'); });
   hudBar.style.width = '12%';
   hudKnob.style.left = '12%';
