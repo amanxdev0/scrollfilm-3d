@@ -1,20 +1,27 @@
-# SCROLLFILM — a 3D film that plays as you scroll
+<div align="center">
 
-A scroll-driven cinematic website. A live WebGL "film" runs **under** the page as you scroll, and every word on top of it is **real HTML** — selectable, searchable, accessible. The page ends with a full **reverse-engineering breakdown** of how it was built, with live instruments (an X-ray layer toggle and a real FPS meter).
+# 🎬 SCROLLFILM
 
-No video files. No build step. Just open it.
+**A 3D film that plays as you scroll.**
 
-## Run it
+A live WebGL "film" runs **under** the page as you scroll, and every word on top of it is **real HTML** — selectable, searchable, accessible. The page ends with a full **reverse-engineering breakdown** of how it was built, with live instruments (an X-ray layer toggle and a real FPS meter).
 
-Any static server works:
+[![live demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://amanxdev0.github.io/scrollfilm-3d/)
+[![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![three.js](https://img.shields.io/badge/three.js-%5E0.160.0-black?style=flat-square)](https://threejs.org/)
 
-```bash
-cd scrollfilm-3d
-python3 -m http.server 8000
-# → http://localhost:8000
-```
+[Live demo](https://amanxdev0.github.io/scrollfilm-3d/) · [Report a bug](https://github.com/amanxdev0/scrollfilm-3d/issues)
 
-Or deploy to **GitHub Pages**: repo Settings → Pages → Deploy from branch → `main` / root.
+</div>
+
+---
+
+## The four acts
+
+1. **Nebula drift** — particle starfield, slow push-in
+2. **The planet** — wireframe icosahedron, orbital camera
+3. **The tunnel** — a dive through glowing rings (the film-strip metaphor)
+4. **Terrain + finale** — wireframe wave-terrain at dusk, crane pull-back, gold ring
 
 ## The technique (the whole trick)
 
@@ -38,6 +45,18 @@ Or deploy to **GitHub Pages**: repo Settings → Pages → Deploy from branch �
 - **`prefers-reduced-motion`** renders a single still frame and shows all text statically.
 - Graceful **no-WebGL fallback**: the film hides, every word remains.
 
+## Run it
+
+Any static server works — no video files, no build step:
+
+```bash
+cd scrollfilm-3d
+python3 -m http.server 8000
+# → http://localhost:8000
+```
+
+Or deploy to **GitHub Pages**: repo Settings → Pages → Deploy from branch → `main` / root.
+
 ## Files
 
 | File | What |
@@ -46,13 +65,18 @@ Or deploy to **GitHub Pages**: repo Settings → Pages → Deploy from branch �
 | `css/style.css` | Dark cinematic theme, sticky chapters, X-ray mode, responsive |
 | `js/film.js` | Three.js film (4 acts), scroll-interpolation engine, FPS meter, adaptive quality, lab controls |
 
-## The four acts
+## The Scroll Series
 
-1. **Nebula drift** — particle starfield, slow push-in
-2. **The planet** — wireframe icosahedron, orbital camera
-3. **The tunnel** — a dive through glowing rings (the film-strip metaphor)
-4. **Terrain + finale** — wireframe wave-terrain at dusk, crane pull-back, gold ring
+Part of Aman Singh's scroll-driven cinematic universe — real HTML floating over live 3D films, where scroll is the playhead:
+
+- [SCROLLFILM](https://amanxdev0.github.io/scrollfilm-3d/) — the original cinematic WebGL film + full reverse-engineering breakdown
+- [HELIOS](https://amanxdev0.github.io/helios/) — scroll from the Milky Way to Pluto
+- [ABYSS](https://amanxdev0.github.io/abyss/) — descend through the five ocean zones to Challenger Deep
+- [EVENT HORIZON](https://amanxdev0.github.io/event-horizon/) — dive into the heart of a black hole
+- [RAMAYANA](https://amanxdev0.github.io/ramayana/) — a 3D flight through the Valmiki Ramayana
+
+Built with the [scrollfilm engine](https://github.com/amanxdev0/scrollfilm) — make your own.
 
 ## License
 
-MIT — steal the loop, it's the point.
+MIT © Aman Singh — steal the loop, it's the point.
