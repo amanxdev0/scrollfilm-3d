@@ -71,7 +71,7 @@ Part of Aman Singh's scroll-driven cinematic universe — real HTML floating ove
 
 - [SCROLLFILM](https://amanxdev0.github.io/scrollfilm-3d/) — the original cinematic WebGL film + full reverse-engineering breakdown
 - [HELIOS](https://amanxdev0.github.io/helios/) — scroll from the Milky Way to Pluto
-- [ABYSS](https://amanxdev0.github.io/abyss/) — descend through the five ocean zones to Challenger Deep
+- [ABYSS](https://amanxdev0.github.io/ABYSS/) — descend through the five ocean zones to Challenger Deep
 - [EVENT HORIZON](https://amanxdev0.github.io/event-horizon/) — dive into the heart of a black hole
 - [RAMAYANA](https://amanxdev0.github.io/ramayana/) — a 3D flight through the Valmiki Ramayana
 
